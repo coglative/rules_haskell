@@ -1,5 +1,6 @@
 """Interop with Java."""
 
+load("@rules_java//java/common:java_info.bzl", "JavaInfo")
 load("@bazel_skylib//lib:collections.bzl", "collections")
 
 JavaInteropInfo = provider(

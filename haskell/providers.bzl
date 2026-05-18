@@ -1,4 +1,5 @@
 """Providers exposed by the Haskell rules."""
+load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 
 HaskellInfo = provider(
     doc = "Common information about build process: dependencies, etc.",

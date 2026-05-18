@@ -629,6 +629,7 @@ def _configure_python3_toolchain_impl(repository_ctx):
         stub_shebang = ""
     repository_ctx.file("BUILD.bazel", executable = False, content = """
 load("@rules_python//python:py_runtime_pair.bzl", "py_runtime_pair")
+load("@rules_python//python:py_runtime.bzl", "py_runtime")
 py_runtime(
     name = "python3_runtime",
     interpreter_path = "{python3}",

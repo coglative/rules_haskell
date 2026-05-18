@@ -1,3 +1,4 @@
+load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@bazel_skylib//lib:sets.bzl", "sets")
 load(
     "//haskell:providers.bzl",

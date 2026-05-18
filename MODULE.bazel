@@ -24,10 +24,9 @@ bazel_dep(
     name = "rules_cc",
     version = "0.0.9",
 )
-bazel_dep(
-    name = "rules_nodejs",
-    version = "5.8.3",
-)
+# rules_nodejs removed — only consumer is asterius (Haskell-to-JS),
+# deprecated upstream. rules_nodejs 5.8.3 uses
+# incompatible_use_toolchain_transition removed in Bazel 9.
 bazel_dep(
     name = "rules_python",
     version = "0.21.0",
@@ -44,13 +43,11 @@ bazel_dep(
     name = "rules_proto",
     version = "5.3.0-21.7",
 )
-bazel_dep(
-    name = "aspect_rules_js",
-    version = "1.34.0",
-)
+# aspect_rules_js removed — transitively pulls rules_nodejs, which is
+# Bazel-9-incompatible. Only consumer was asterius (also removed above).
 bazel_dep(
     name = "rules_sh",
-    version = "0.4.0",
+    version = "0.5.0",
 )
 
 ghc_version = use_extension("//extensions:ghc_version.bzl", "ghc_default_version")
@@ -72,12 +69,12 @@ use_repo(
     "rules_haskell_worker_dependencies",
 )
 
-asterius = use_extension("@rules_haskell//haskell/asterius:extension.bzl", "rules_haskell_asterius")
-use_repo(
-    asterius,
-    "rules_haskell_asterius_build_setting",
-    "rules_haskell_asterius_webpack",
-)
+# Asterius extension removed — its asterius_dependencies.bzl does
+# `load("@rules_nodejs//nodejs:repositories.bzl", ...)` at module
+# resolution time, which fails because rules_nodejs (above) was removed
+# for being Bazel-9-incompatible. The extension is dead-code for us
+# (we don't use Haskell-to-JS); upstreaming the removal is tracked
+# separately.
 
 haskell_toolchains = use_extension(
     "@rules_haskell//extensions:haskell_toolchains.bzl",
@@ -108,21 +105,8 @@ register_toolchains(
     "@rules_haskell_python_local//:toolchain",
 )
 
-# Setup node toolchain and install webpack for asterius.
-node = use_extension("@rules_nodejs//nodejs:extensions.bzl", "node")
-node.toolchain(node_version = "16.9.0")
-
-npm = use_extension(
-    "@aspect_rules_js//npm:extensions.bzl",
-    "npm",
-)
-npm.npm_translate_lock(
-    name = "rules_haskell_npm",
-    link_workspace = "rules_haskell",
-    pnpm_lock = "//haskell/asterius/npm:pnpm-lock.yaml",
-    verify_node_modules_ignored = "@rules_haskell//:.bazelignore",
-)
-use_repo(npm, "rules_haskell_npm")
+# Node toolchain + npm extension removed — both reference @rules_nodejs
+# which we dropped above (only used by asterius, deprecated).
 
 #### Development dependencies ####
 bazel_dep(

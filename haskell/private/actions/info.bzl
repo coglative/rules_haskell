@@ -1,5 +1,6 @@
 """Defines output groups that are consumed by tools such as 'hrepl'."""
 
+load("@rules_proto//proto:defs.bzl", "ProtoInfo")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load(":private/cc_libraries.bzl", "get_ghci_library_files")
 

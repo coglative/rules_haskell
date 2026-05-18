@@ -1,3 +1,4 @@
+load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load(
     "@rules_cc//cc:action_names.bzl",
     "ACTION_NAMES",
@@ -9,6 +10,10 @@ load(
     "flag_group",
     "flag_set",
     "tool_path",
+)
+load(
+    "@rules_cc//cc/private/toolchain_config:cc_toolchain_config_info.bzl",
+    "CcToolchainConfigInfo",
 )
 
 def _impl(ctx):
