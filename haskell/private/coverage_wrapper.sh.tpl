@@ -1,27 +1,56 @@
 #!/usr/bin/env bash
 # A wrapper for Haskell binaries which have been instrumented for hpc code coverage.
 
-# Copy-pasted from Bazel's Bash runfiles library (tools/bash/runfiles/runfiles.bash).
+# Sources rules_haskell's vendored copy of Bazel's bash runfiles
+# library (haskell/private/runfiles.bash). Vendored rather than
+# referenced via @bazel_tools//tools/bash/runfiles:runfiles because
+# bzlmod remaps that label to @rules_shell//shell/runfiles:runfiles,
+# an alias that resolves to a sh_library (not a single file) under
+# rules_shell 0.6+. See haskell/defs.bzl `_bash_runfiles` attr for
+# details.
+#
+# Path components reflect rules_haskell's bzlmod canonical repo
+# name (`rules_haskell+` under Bazel 9; `rules_haskell` under
+# Bazel 8). We try both so the template stays portable across
+# Bazel versions.
 set -euo pipefail
+RH_RUNFILES_PATH_BZLMOD="rules_haskell+/haskell/private/runfiles.bash"
+RH_RUNFILES_PATH_LEGACY="rules_haskell/haskell/private/runfiles.bash"
 if [[ ! -d "${RUNFILES_DIR:-/dev/null}" && ! -f "${RUNFILES_MANIFEST_FILE:-/dev/null}" ]]; then
   if [[ -f "$0.runfiles_manifest" ]]; then
     export RUNFILES_MANIFEST_FILE="$0.runfiles_manifest"
   elif [[ -f "$0.runfiles/MANIFEST" ]]; then
     export RUNFILES_MANIFEST_FILE="$0.runfiles/MANIFEST"
-  elif [[ -f "$0.runfiles/bazel_tools/tools/bash/runfiles/runfiles.bash" ]]; then
+  elif [[ -f "$0.runfiles/${RH_RUNFILES_PATH_BZLMOD}" || -f "$0.runfiles/${RH_RUNFILES_PATH_LEGACY}" ]]; then
     export RUNFILES_DIR="$0.runfiles"
   fi
 fi
-if [[ -f "${RUNFILES_DIR:-/dev/null}/bazel_tools/tools/bash/runfiles/runfiles.bash" ]]; then
-  # shellcheck source=/dev/null
-  source "${RUNFILES_DIR}/bazel_tools/tools/bash/runfiles/runfiles.bash"
-elif [[ -f "${RUNFILES_MANIFEST_FILE:-/dev/null}" ]]; then
-  # shellcheck source=/dev/null
-  source "$(grep -m1 "^bazel_tools/tools/bash/runfiles/runfiles.bash " \
+_rh_source_runfiles() {
+  local d="${RUNFILES_DIR:-/dev/null}"
+  if [[ -f "$d/$RH_RUNFILES_PATH_BZLMOD" ]]; then
+    # shellcheck source=/dev/null
+    source "$d/$RH_RUNFILES_PATH_BZLMOD" && return 0
+  elif [[ -f "$d/$RH_RUNFILES_PATH_LEGACY" ]]; then
+    # shellcheck source=/dev/null
+    source "$d/$RH_RUNFILES_PATH_LEGACY" && return 0
+  fi
+  return 1
+}
+if ! _rh_source_runfiles; then
+  if [[ -f "${RUNFILES_MANIFEST_FILE:-/dev/null}" ]]; then
+    _rh_manifest_path="$(grep -m1 "^rules_haskell[+]*/haskell/private/runfiles.bash " \
             "$RUNFILES_MANIFEST_FILE" | cut -d ' ' -f 2-)"
-else
-  echo >&2 "ERROR: cannot find @bazel_tools//tools/bash/runfiles:runfiles.bash"
-  exit 1
+    if [[ -n "$_rh_manifest_path" && -f "$_rh_manifest_path" ]]; then
+      # shellcheck source=/dev/null
+      source "$_rh_manifest_path"
+    else
+      echo >&2 "ERROR: cannot find rules_haskell vendored runfiles.bash in manifest"
+      exit 1
+    fi
+  else
+    echo >&2 "ERROR: cannot locate rules_haskell vendored runfiles.bash"
+    exit 1
+  fi
 fi
 # --- end runfiles.bash initialization ---
 

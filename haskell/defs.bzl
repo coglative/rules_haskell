@@ -166,7 +166,20 @@ def _mk_binary_rule(**kwargs):
             ),
             "_bash_runfiles": attr.label(
                 allow_single_file = True,
-                default = Label("@bazel_tools//tools/bash/runfiles:runfiles"),
+                # Vendored copy of bazel's bash runfiles helper.
+                # bzlmod remaps `@bazel_tools//tools/bash/runfiles:runfiles`
+                # to `@rules_shell//shell/runfiles:runfiles`, an alias that
+                # resolves to `:runfiles_impl` (a sh_library, not a single
+                # file) when ROOT_SYMLINKS_SUPPORTED — breaks
+                # `allow_single_file = True` at analysis time. The
+                # underlying `runfiles.bash` file in rules_shell has
+                # restricted visibility (`//tests/runfiles:__pkg__`) so we
+                # can't reference it directly across the module boundary.
+                # Vendoring sidesteps both problems; the file is a stable
+                # Bazel utility that's rarely revised. Coverage wrapper
+                # template (private/coverage_wrapper.sh.tpl) sources it
+                # from the vendored path.
+                default = Label("@rules_haskell//haskell:private/runfiles.bash"),
             ),
         })
 
