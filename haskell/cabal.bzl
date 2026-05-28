@@ -106,13 +106,20 @@ def _find_cabal(srcs):
     return cabal
 
 def _find_setup(hs, cabal, srcs, ignore_setup = False):
-    """Check that a Setup script exists. If not, create a default one."""
+    """Check that a Setup script exists. If not, create a default one.
+
+    Only Setup.hs/Setup.lhs at the package root (same directory as the
+    .cabal file) are considered. hpke-0.1.0 has a library module
+    Crypto/HPKE/Setup.hs which the older "shortest dirname wins"
+    heuristic would mistakenly select as a Cabal Setup; restrict to
+    cabal-sibling files to avoid that.
+    """
     setup = None
     if not ignore_setup:
         for f in srcs:
-            if f.basename in ["Setup.hs", "Setup.lhs"]:
-                if not setup or f.dirname < setup.dirname:
-                    setup = f
+            if f.basename in ["Setup.hs", "Setup.lhs"] and f.dirname == cabal.dirname:
+                setup = f
+                break
     if not setup:
         setup = hs.actions.declare_file("Setup.hs", sibling = cabal)
         hs.actions.write(
