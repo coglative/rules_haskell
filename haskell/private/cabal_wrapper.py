@@ -134,6 +134,29 @@ extra_args = json_args["extra_args"]
 path_args = json_args["path_args"]
 
 ar = find_exe(toolchain_info["ar"])
+
+# THE ARCHIVER MAY NOT EXIST AT THE PATH WE WERE HANDED, and until here nothing checks.
+#
+# haskell/cc.bzl rewrites a cc toolchain whose archiver is `libtool` into a sibling `ar`,
+# commenting "assume `ar` is available at the same place". That assumption is TRUE for the case
+# it was written against -- Bazel pointing ar_executable at /usr/bin/libtool, where /usr/bin/ar
+# really does sit beside it. It is FALSE for apple_support's generated crosstool, which ships
+# libtool, wrapped_clang and no `ar` at all. The join still produces a perfectly plausible path,
+# find_exe's fallback prefixes it with the workspace name, and Cabal is handed a file that was
+# never generated. It fails with "Cannot find the program 'ar'" naming a path nobody can grep
+# for, and every stackage dependency fails identically, so the whole toolchain looks broken on
+# darwin rather than one lookup being wrong.
+#
+# Fall back to the archiver on PATH, which is what the rewrite was reaching for. Done HERE
+# rather than in cc.bzl because this runs at EXECUTION time and can ask whether the file exists;
+# analysis cannot, which is why the bad assumption was invisible where it was made.
+if not os.path.isfile(ar):
+    system_ar = shutil.which("ar")
+    if system_ar:
+        ar = system_ar
+    else:
+        fail_msg = "rules_haskell: archiver not found at {} and no `ar` on PATH".format(ar)
+        raise FileNotFoundError(fail_msg)
 cc = find_exe(toolchain_info["cc"])
 ld = find_exe(toolchain_info["ld"])
 strip = find_exe(toolchain_info["strip"])
