@@ -56,6 +56,29 @@ def bindist_info_for_version(ctx, version):
 
     return bindist
 
+def _canonical_package_cache(ctx, db):
+    """Rewrites db/package.cache so its bytes do not depend on the filesystem.
+
+    ghc-pkg writes the cache in directory-listing order, which on ext4 is a per-filesystem hash, and every Haskell
+    action takes the cache as an input: two machines fetching the same bindist then share no action key. tmpfs lists
+    a directory in an order fixed by creation order, so a copy made there in sorted order lists the same everywhere.
+    """
+    if not ctx.path(paths.join(db, "package.cache")).exists:
+        return
+    if not ctx.path("/dev/shm").exists:
+        # buildifier: disable=print
+        print("rules_haskell: no /dev/shm, so {}/package.cache keeps this filesystem's order and cache keys will not match other machines".format(db))
+        return
+    execute_or_fail_loudly(ctx, ["sh", "-c", """
+set -eu
+db=$1
+tmp=$(mktemp -d /dev/shm/rules_haskell_pkgdb.XXXXXX)
+trap 'rm -rf "$tmp"' EXIT
+for f in $(cd "$db" && ls | grep '[.]conf$' | LC_ALL=C sort); do cp "$db/$f" "$tmp/$f"; done
+./bin/ghc-pkg --package-db="$tmp" recache
+cp "$tmp/package.cache" "$db/package.cache"
+""", "sh", db])
+
 def _ghc_bindist_impl(ctx):
     filepaths = resolve_labels(ctx, [
         "@rules_haskell//haskell:ghc.BUILD.tpl",
@@ -280,6 +303,8 @@ rm -f
         libdir = "lib/lib"
     elif os == "linux" and version_tuple >= (9, 4, 1) and version_tuple < (9, 10, 1):
         libdir = "lib/lib"
+
+    _canonical_package_cache(ctx, paths.join(libdir, "package.conf.d"))
 
     docdir = "doc"
     if GHC_BINDIST_DOCDIR.get(version) != None and GHC_BINDIST_DOCDIR[version].get(target) != None:
